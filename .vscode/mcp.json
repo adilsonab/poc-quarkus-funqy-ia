@@ -1,0 +1,21 @@
+{
+  "servers": {
+    "quarkus-agent": {
+      "type": "stdio",
+      "command": "java",
+      "args": [
+        "-Xmx512m",
+        "--add-opens",
+        "java.base/java.lang=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+        "-XX:+UseSerialGC",
+        "-jar",
+        "/usr/local/lib/quarkus-agent-mcp-runner.jar"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "AGENT_MCP_TOOLS_BROWSER_ENABLED": "false"
+      }
+    }
+  }
+}
