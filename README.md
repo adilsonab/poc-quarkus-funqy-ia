@@ -97,25 +97,33 @@ Com o Dev Container e o PostgreSQL ativos:
   Funqy, confira o contrato das funções, execute os testes e explique os riscos
   de migração desta versão.”
 
-## Prompts de aprendizado e Spec Kit
+## Tutorial: Rules, Skills, MCP e migração com Spec Kit
 
-A pasta [`prompts/`](prompts/) contém três prompts numerados para reproduzir
-esta POC, instalar o Spec Kit e planejar uma atualização da stack:
+Este tutorial demonstra três etapas que podem ser repetidas por colegas:
 
-1. [01-recriar-poc.md](prompts/01-recriar-poc.md) orienta a geração do projeto
-   com o comportamento, as regras, as skills e a configuração de MCP descritos
-   neste repositório.
-2. [02-instalar-speckit.md](prompts/02-instalar-speckit.md) orienta a instalação
-   oficial do Spec Kit e sua integração com o agente disponível no VS Code.
-3. [03-migrar-stack.md](prompts/03-migrar-stack.md) transforma uma atualização
-   de Java, Quarkus/Funqy e demais tecnologias em uma migração documentada e
-   verificável.
+1. [01-recriar-poc.md](prompts/01-recriar-poc.md) gera a POC em um repositório
+   vazio, incluindo a aplicação e o harness: Rules, Agent Skills, configuração
+   MCP, Dev Container e testes.
+2. [02-instalar-speckit.md](prompts/02-instalar-speckit.md) inicializa o Spec
+   Kit no projeto existente, alinha a constituição às regras e registra o
+   estado atual (AS-IS) em
+   [`.specify/memory/as-is.md`](.specify/memory/as-is.md), com revisão Git,
+   versões e referências às evidências.
+3. [03-migrar-stack.md](prompts/03-migrar-stack.md) usa o AS-IS como origem,
+   pesquisa versões-alvo e cria uma especificação TO-BE separada com o fluxo
+   Spec Kit antes de implementar a migração.
 
-Use-os em sequência, no repositório que será trabalhado. O Spec Kit complementa
-as instruções, skills e MCPs; não os substitui. As instruções do projeto
-continuam valendo para o agente, as skills fornecem procedimentos especializados
-e o MCP oferece ferramentas. O Spec Kit ajuda a estruturar o trabalho em
-constituição, especificação, plano, tarefas, implementação e convergência.
+O AS-IS é uma fotografia factual da baseline, **não** uma especificação
+retroativa de todas as funcionalidades. Preserve-o como registro histórico.
+O TO-BE é o objetivo da próxima mudança e deve ficar em uma nova pasta dentro
+de `specs/`; não edite o AS-IS para fazê-lo coincidir com o destino. Se uma
+migração concluída precisar de uma nova baseline, capture-a em outro snapshot
+datado.
+
+O Spec Kit complementa as instruções, skills e MCPs; não os substitui. As
+instruções do projeto definem convenções, as skills dão procedimentos
+especializados e o MCP oferece ferramentas. O Spec Kit estrutura trabalho em
+especificação, plano, tarefas, implementação e convergência.
 
 Este repositório foi inicializado com o Specify CLI **1.4.4**, usando a
 integração GitHub Copilot no modo skills. O scaffolding fica em
@@ -134,25 +142,41 @@ para atualizar a versão ou escolher outra forma de instalar o CLI. Inicializar
 em um projeto existente pode mesclar ou substituir arquivos em caminhos
 gerenciados; revise os conflitos e o diff antes de confirmar mudanças.
 
-Fluxo sugerido depois da instalação:
+### Como executar o fluxo
 
-1. No chat do GitHub Copilot no VS Code, execute `/speckit-constitution` uma
-   vez para revisar a constituição inicial em
-   [`.specify/memory/constitution.md`](.specify/memory/constitution.md). Ela
-   reforça as regras de [Copilot](.github/copilot-instructions.md) e as skills
-   de [Funqy](.agents/skills/quarkus-funqy/SKILL.md) e
-   [Liquibase/PostgreSQL](.agents/skills/liquibase-postgresql/SKILL.md), sem
-   contradizê-las.
-2. Use o [prompt de migração](prompts/03-migrar-stack.md) como entrada para
-   `/speckit-specify`. Depois revise, uma etapa por vez,
-   `/speckit-clarify` (se necessário), `/speckit-plan`, `/speckit-tasks`,
-   `/speckit-analyze`, `/speckit-implement` e `/speckit-converge`. Os comandos
-   são executados no chat do agente, não no terminal.
-3. Revise as versões-alvo e as fontes oficiais antes de aprovar o plano.
-   Implemente as tarefas com as skills relevantes, preserve Funqy HTTP e sua
-   condição de preview, salvo decisão explícita em contrário.
-4. Revise o diff e os riscos de compatibilidade; execute `./mvnw test` e
-   `./mvnw package` dentro do Dev Container. Registre resultados e limitações.
+No chat do GitHub Copilot no VS Code, use os prompts e skills por etapa; não
+execute os comandos `/speckit-*` no terminal.
+
+1. **Criar a POC:** em um repositório vazio, forneça o prompt 01 e os arquivos
+   de referência. Revise a aplicação, as Rules, as Agent Skills e a configuração
+   MCP antes de aceitar o resultado. Esta etapa cria o ponto de partida; ela não
+   instala o Spec Kit nem afirma que um AS-IS foi capturado.
+2. **Instalar e registrar o AS-IS:** forneça o prompt 02 no repositório gerado.
+   Confirme a versão instalada do Spec Kit e revise
+   `.specify/memory/as-is.md` contra `pom.xml`, Wrapper, Dev Container, Compose,
+   código, migrations, testes e harness. Confira a revisão Git, quais versões
+   são declaradas versus observadas e quais validações não foram executadas.
+   Execute `/speckit-constitution` para revisar a constituição se necessário.
+   Não faça upgrade das dependências nessa etapa.
+3. **Especificar o TO-BE:** antes de qualquer alteração, use o prompt 03 e o
+   AS-IS como entrada de `/speckit-specify`. Verifique documentação oficial
+   para os destinos, discuta riscos e confirme escolhas. Depois rode
+   `/speckit-clarify` se necessário, `/speckit-plan`, `/speckit-tasks` e
+   `/speckit-analyze`; revise os artefatos na nova pasta `specs/`.
+4. **Implementar e fechar:** após revisar/aprovar o plano e as tarefas, rode
+   `/speckit-implement` e `/speckit-converge`. Use as skills de Funqy e
+   Liquibase/PostgreSQL e as ferramentas MCP autorizadas. Preserve o contrato
+   `listTasks`/`createTask`, não altere changesets aplicados e execute
+   `./mvnw test` e `./mvnw package` no Dev Container. Registre resultados e
+   limitações; não atualize o snapshot AS-IS histórico.
+
+### Estado deste repositório
+
+O passo 01 está representado pela própria POC e seu harness. O Spec Kit 1.4.4
+foi inicializado pelo passo 02, e o AS-IS atual está registrado em
+[`.specify/memory/as-is.md`](.specify/memory/as-is.md). O TO-BE da próxima
+migração ainda **não** foi especificado; esse será o próximo exercício com o
+prompt 03 e `/speckit-specify`.
 
 O fluxo e a sintaxe acima correspondem à integração Copilot do Spec Kit 1.4.4.
 Confirme a documentação oficial ao atualizar a versão, pois nomes e

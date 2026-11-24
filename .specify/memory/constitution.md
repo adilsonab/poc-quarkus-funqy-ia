@@ -58,6 +58,10 @@ compatibility risks.
 - Use Spec Kit artifacts to define bounded work before implementation. Review
   the specification, plan, and tasks for contract compatibility and migration
   risk.
+- Treat `.specify/memory/as-is.md` as a historical snapshot. Create TO-BE
+  migration artifacts separately under `specs/`; never rewrite a prior AS-IS
+  snapshot to match the migration destination. Record a new dated snapshot
+  when a later baseline needs to be captured.
 - Add or update focused tests for behavior changes. For Java changes, execute
   `./mvnw test` and `./mvnw package` inside the Dev Container.
 - Review the final diff and state any unverified assumptions or limitations.
@@ -72,4 +76,4 @@ constitution when an approved architectural or technology decision changes
 its principles, and update directly related guidance in the same change.
 Review plans and implementation diffs against these principles.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-23 | **Last Amended**: 2026-11-23
+**Version**: 1.1.0 | **Ratified**: 2026-11-23 | **Last Amended**: 2026-11-24
