@@ -1,4 +1,4 @@
-FROM maven:3.9.16-eclipse-temurin-21
+FROM maven:3.10.2-eclipse-temurin-25-noble
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y curl unzip \

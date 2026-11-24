@@ -1,6 +1,6 @@
 ---
 name: quarkus-funqy
-description: Implement and validate Quarkus Funqy functions exposed over HTTP in this Java 21 and Quarkus 3.33.4 migration POC.
+description: Implement and validate Quarkus Funqy functions exposed over HTTP in this Java 25 and Quarkus 3.40.1.2 migration POC.
 ---
 
 # Quarkus Funqy
@@ -10,7 +10,9 @@ types, persistence calls, or the Angular-facing HTTP contract.
 
 ## Project constraints
 
-- Keep Java 21 and Quarkus 3.33.4 unless a migration is explicitly requested.
+- Use Java 25 LTS and Quarkus 3.40.1.2 LTS as the current baseline. A future
+  explicitly requested migration may revise it after official compatibility
+  research.
 - Use `quarkus-funqy-http` and the `@Funq` API. Funqy and its HTTP binding are
   preview features; preserve this as an intentional POC choice.
 - Keep function methods portable: put HTTP-independent business rules and
@@ -28,7 +30,7 @@ types, persistence calls, or the Angular-facing HTTP contract.
 2. Use the existing datasource and Liquibase schema; avoid introducing a
    second persistence mechanism.
 3. Add focused tests for the changed function behavior or persistence path.
-4. Run `./mvnw test` and `./mvnw package` inside the Dev Container.
+4. Run `./mvnw test` and `./mvnw package` inside the Java 25 Dev Container.
 5. For HTTP behavior changes, verify the function route and JSON contract
    against the running service.
 

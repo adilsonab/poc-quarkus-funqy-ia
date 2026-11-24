@@ -4,28 +4,41 @@ Backend separado para o frontend Angular do repositório irmão
 [`poc-angular-ia`](../poc-angular-ia). O MVP persiste tarefas no PostgreSQL;
 não há chamada a LLM em runtime.
 
-## Stack e objetivo de migração
+## Stack atual (TO-BE da migração)
 
-- Java 21
-- Quarkus 3.33.4 LTS com Funqy HTTP
-- PostgreSQL 17
+- Java 25 LTS (Eclipse Temurin)
+- Quarkus 3.40.1.2 LTS com Funqy HTTP
+- PostgreSQL 18.7
+- Apache Maven 3.10.2, distribuído pelo Maven Wrapper 3.3.4
 - Liquibase para versionar o schema
+- Quarkus Agent MCP 1.2.15, com versão e checksum fixados
 
-As versões são deliberadamente anteriores às linhas mais novas para permitir
-uma POC futura de migração. Quarkus 3.33 é uma linha LTS com manutenção
-comunitária anunciada até 25/03/2027; PostgreSQL 17 tem suporte anunciado até
-08/11/2029. Use os patches mais recentes dessas linhas ao atualizar o projeto.
+O alvo foi escolhido com pesquisa em fontes oficiais em 24/11/2026. Java 25 é
+LTS; Quarkus 3.40 é LTS com manutenção comunitária anunciada até 30/09/2027;
+PostgreSQL 18 é suportado até 14/11/2030. O resumo detalhado e as fontes estão
+em [research.md](specs/001-stack-upgrade/research.md).
+
+O snapshot da stack anterior (Java 21, Quarkus 3.33.4, PostgreSQL 17 e Maven
+3.9.16) continua preservado em
+[`.specify/memory/as-is.md`](.specify/memory/as-is.md). Ele é histórico; não o
+edite para refletir o alvo.
 
 **Atenção:** Funqy e o binding HTTP são classificados como preview pela
 documentação do Quarkus. Funqy HTTP é intencional nesta POC, mas é uma
 abstração minimalista e não substitui uma API REST completa. Preserve essa
 limitação ao avaliar o resultado da migração.
 
+> **Antes de reconstruir:** se você já usava o PostgreSQL 17 neste projeto,
+> não escolha **Rebuild and Reopen in Container** até fazer e verificar o
+> backup descrito em [Preservar dados ao migrar PostgreSQL 17 para
+> 18](#preservar-dados-ao-migrar-postgresql-17-para-18). A imagem PostgreSQL
+> 18 usa um volume novo; o volume 17 deve permanecer intacto.
+
 ## Executar pelo Dev Container
 
 1. Abra esta pasta no VS Code.
 2. Execute **Dev Containers: Reopen in Container**. O Compose inicia o serviço
-   de desenvolvimento e PostgreSQL 17; o `postCreateCommand` compila o projeto.
+   de desenvolvimento e PostgreSQL 18.7; o `postCreateCommand` compila o projeto.
 3. No terminal do container, execute:
 
    ```sh
@@ -40,8 +53,63 @@ publica a porta 5432 somente em `localhost`, para acesso por ferramentas como
 DBeaver. Configure a conexão com host `localhost`, porta `5432` e banco
 `poc_quarkus_funqy_ia`; use o usuário e a senha definidos no Compose
 (`poc_quarkus_funqy_ia` e `local-dev-only`). Não reutilize essas credenciais em
-ambientes compartilhados. Os dados ficam no volume `postgres-data` e persistem
-ao parar o Dev Container. O Liquibase aplica as migrações na inicialização.
+ambientes compartilhados. A configuração atual usa o volume
+`postgres-data-v18`, montado no caminho compatível com PostgreSQL 18. Se você
+tem dados no volume antigo `postgres-data`, siga primeiro o procedimento de
+backup e restauração abaixo; nunca use `docker compose down -v`.
+
+## Preservar dados ao migrar PostgreSQL 17 para 18
+
+PostgreSQL 17 e 18 são versões **major** diferentes. Não se pode iniciar a
+versão 18 diretamente sobre o diretório de dados da 17. A imagem oficial
+também mudou o caminho do volume: a 17 usa `/var/lib/postgresql/data`; a 18
+usa `/var/lib/postgresql` e mantém os dados em
+`/var/lib/postgresql/18/docker`.
+
+Se você tem o Dev Container antigo em execução, antes de escolher **Rebuild
+and Reopen in Container**, pare `quarkus:dev` e faça o backup no terminal do
+**host**, na raiz do repositório. O host precisa ter Docker Compose v2; o
+terminal dentro deste Dev Container não recebe o socket Docker.
+
+1. Gere um backup lógico PostgreSQL 17 e copie-o para a raiz do projeto:
+
+   ```sh
+   docker compose -f .devcontainer/compose.yaml exec -T database sh -c "pg_dump -Fc -U poc_quarkus_funqy_ia -d poc_quarkus_funqy_ia > /tmp/poc-quarkus-funqy-ia-pg17.dump"
+   docker compose -f .devcontainer/compose.yaml cp database:/tmp/poc-quarkus-funqy-ia-pg17.dump ./poc-quarkus-funqy-ia-pg17.dump
+   ```
+
+2. Salve uma cópia das tarefas para comparar após a restauração:
+
+   ```sh
+   docker compose -f .devcontainer/compose.yaml exec -T database psql -X -U poc_quarkus_funqy_ia -d poc_quarkus_funqy_ia -c "COPY (SELECT id, title, created_at FROM tasks ORDER BY id) TO '/tmp/poc-quarkus-funqy-ia-pg17-tasks.csv' WITH CSV HEADER"
+   docker compose -f .devcontainer/compose.yaml cp database:/tmp/poc-quarkus-funqy-ia-pg17-tasks.csv ./poc-quarkus-funqy-ia-pg17-tasks.csv
+   ```
+
+3. Confirme que os dois arquivos existem e que o dump não está vazio. Se
+   algum comando falhar, pare e não recrie o serviço. Os arquivos são dados
+   locais, ignorados pelo Git e pelo contexto Docker; nunca os publique nem
+   adicione ao repositório.
+4. Só então reconstrua/reabra o Dev Container. O serviço PostgreSQL 18 cria o
+   volume novo `postgres-data-v18`. Antes de iniciar a aplicação, restaure o
+   dump pelo terminal do host:
+
+   ```sh
+   docker compose -f .devcontainer/compose.yaml cp ./poc-quarkus-funqy-ia-pg17.dump database:/tmp/poc-quarkus-funqy-ia-pg17.dump
+   docker compose -f .devcontainer/compose.yaml exec -T database pg_restore --exit-on-error --clean --if-exists --no-owner --username=poc_quarkus_funqy_ia --dbname=poc_quarkus_funqy_ia /tmp/poc-quarkus-funqy-ia-pg17.dump
+   docker compose -f .devcontainer/compose.yaml exec -T database psql -X -U poc_quarkus_funqy_ia -d poc_quarkus_funqy_ia -c "COPY (SELECT id, title, created_at FROM tasks ORDER BY id) TO '/tmp/poc-quarkus-funqy-ia-pg18-tasks.csv' WITH CSV HEADER"
+   docker compose -f .devcontainer/compose.yaml cp database:/tmp/poc-quarkus-funqy-ia-pg18-tasks.csv ./poc-quarkus-funqy-ia-pg18-tasks.csv
+   ```
+
+5. Compare os CSVs no VS Code usando **File: Compare Active File With...**.
+   Quantidade e conteúdo devem coincidir. Só depois inicie
+   `./mvnw quarkus:dev` dentro do Dev Container. O Liquibase deve reconhecer
+   o histórico já restaurado. Se restauração/comparação falhar, não apague o
+   dump nem o volume antigo. Não execute `docker compose down -v`.
+
+Se você está clonando o projeto agora e não tem um banco PostgreSQL 17 local,
+pode ignorar o backup antigo; o Compose cria um PostgreSQL 18 vazio e o
+Liquibase cria o schema. Os comandos detalhados e a matriz de validação estão
+em [quickstart.md](specs/001-stack-upgrade/quickstart.md).
 
 ## Contrato Funqy HTTP
 
@@ -163,20 +231,36 @@ execute os comandos `/speckit-*` no terminal.
    para os destinos, discuta riscos e confirme escolhas. Depois rode
    `/speckit-clarify` se necessário, `/speckit-plan`, `/speckit-tasks` e
    `/speckit-analyze`; revise os artefatos na nova pasta `specs/`.
-4. **Implementar e fechar:** após revisar/aprovar o plano e as tarefas, rode
+4. **Implementar e fechar:** após revisar o plano e as tarefas, rode
    `/speckit-implement` e `/speckit-converge`. Use as skills de Funqy e
-   Liquibase/PostgreSQL e as ferramentas MCP autorizadas. Preserve o contrato
-   `listTasks`/`createTask`, não altere changesets aplicados e execute
-   `./mvnw test` e `./mvnw package` no Dev Container. Registre resultados e
-   limitações; não atualize o snapshot AS-IS histórico.
+   Liquibase/PostgreSQL e as ferramentas MCP autorizadas. Para uma mudança
+   major do PostgreSQL, faça o backup antes de recriar o serviço. Preserve o
+   contrato `listTasks`/`createTask`, não altere changesets aplicados e execute
+   `./mvnw test` e `./mvnw package` no Dev Container atualizado. Registre
+   resultados e limitações; não atualize o snapshot AS-IS histórico.
 
 ### Estado deste repositório
 
-O passo 01 está representado pela própria POC e seu harness. O Spec Kit 1.4.4
-foi inicializado pelo passo 02, e o AS-IS atual está registrado em
-[`.specify/memory/as-is.md`](.specify/memory/as-is.md). O TO-BE da próxima
-migração ainda **não** foi especificado; esse será o próximo exercício com o
-prompt 03 e `/speckit-specify`.
+O passo 01 está representado pela POC original e seu harness. O Spec Kit 1.4.4
+foi inicializado pelo passo 02; a baseline anterior está registrada em
+[`.specify/memory/as-is.md`](.specify/memory/as-is.md). O TO-BE da migração
+está em [spec.md](specs/001-stack-upgrade/spec.md), com pesquisa, plano,
+contratos, roteiro e tarefas em
+[specs/001-stack-upgrade/](specs/001-stack-upgrade/).
+
+O Quarkus Agent MCP foi usado para um `quarkus_update` em modo dry-run, que
+confirmou o destino 3.40.1.2; a busca MCP de documentação não iniciou porque
+Docker/Podman não estão disponíveis neste ambiente. O atualizador do Quarkus
+usa OpenRewrite e é experimental: revise o diff e os guias oficiais antes de
+aplicar qualquer receita. Não habilite o socket Docker do host apenas para
+destravar a busca.
+
+**Status da validação desta migração:** as versões e os arquivos de
+configuração foram atualizados, mas não foi possível reconstruir o Dev
+Container, executar os testes Java ou realizar dump/restore PostgreSQL neste
+ambiente (Java 21 disponível; Docker e Podman ausentes). Siga o procedimento
+acima em um host com Docker para preservar dados e então rode os comandos de
+validação. Até lá, trate o destino como configurado, mas não como validado.
 
 O fluxo e a sintaxe acima correspondem à integração Copilot do Spec Kit 1.4.4.
 Confirme a documentação oficial ao atualizar a versão, pois nomes e
@@ -185,7 +269,14 @@ disponibilidade dos comandos podem mudar.
 ## Referências oficiais
 
 - [Quarkus releases](https://quarkus.io/releases/)
+- [Quarkus update (experimental)](https://quarkus.io/guides/update-quarkus)
+- [Quarkus migration guides 3.34–3.40](https://github.com/quarkusio/quarkus/wiki/Migration-Guides)
+- [Java 25 support in Quarkus](https://quarkus.io/blog/quarkus-3-31-released/)
 - [Funqy](https://quarkus.io/guides/funqy)
 - [Funqy HTTP binding](https://quarkus.io/guides/funqy-http)
 - [Liquibase no Quarkus](https://quarkus.io/guides/liquibase)
 - [Política de versões PostgreSQL](https://www.postgresql.org/support/versioning/)
+- [Upgrade de cluster PostgreSQL](https://www.postgresql.org/docs/18/upgrading.html)
+- [Imagem oficial PostgreSQL e `PGDATA`](https://github.com/docker-library/docs/blob/master/postgres/README.md#pgdata)
+- [Apache Maven 3.10.2](https://maven.apache.org/docs/3.10.2/release-notes.html)
+- [Eclipse Temurin support roadmap](https://adoptium.net/support/)

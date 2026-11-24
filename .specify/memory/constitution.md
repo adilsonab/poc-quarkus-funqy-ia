@@ -36,8 +36,10 @@ compatibility risks.
 
 ## Technology and Security Constraints
 
-- The current baseline is Java 21, Quarkus 3.33.4, Funqy HTTP, PostgreSQL 17,
-  Liquibase, and the Maven Wrapper.
+- The current configured baseline is Java 25 LTS, Quarkus 3.40.1.2 LTS,
+  Funqy HTTP, PostgreSQL 18.7, Liquibase, and Maven 3.10.2 via Maven Wrapper
+  3.3.4. The earlier Java 21/Quarkus 3.33.4/PostgreSQL 17 baseline remains in
+  `.specify/memory/as-is.md` as historical evidence.
 - Funqy HTTP is an intentional preview choice in this POC. Preserve it and
   document compatibility limitations. A user-approved migration may revise
   the baseline, but must first verify supported versions and compatibility
@@ -45,6 +47,10 @@ compatibility risks.
   approved.
 - Run Java commands in the Dev Container. PostgreSQL Compose credentials and
   ports are for local development only.
+- For PostgreSQL major upgrades, create and verify a logical dump/restore
+  before recreating the service, use a separate major-version volume, and
+  retain the old volume as a fallback. Never attach a PG17 data directory to
+  PostgreSQL 18 or recommend `docker compose down -v`.
 - Keep rules, this constitution, skills, README, and implementation aligned.
   Update directly affected guidance when an approved migration changes a
   compatibility constraint.
@@ -76,4 +82,4 @@ constitution when an approved architectural or technology decision changes
 its principles, and update directly related guidance in the same change.
 Review plans and implementation diffs against these principles.
 
-**Version**: 1.1.0 | **Ratified**: 2026-11-23 | **Last Amended**: 2026-11-24
+**Version**: 1.2.0 | **Ratified**: 2026-11-23 | **Last Amended**: 2026-11-24

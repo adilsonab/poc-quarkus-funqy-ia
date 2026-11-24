@@ -1,0 +1,9 @@
+.git
+.idea
+.vscode
+.env
+*.log
+target
+poc-quarkus-funqy-ia-pg17.dump
+poc-quarkus-funqy-ia-pg17-tasks.csv
+poc-quarkus-funqy-ia-pg18-tasks.csv

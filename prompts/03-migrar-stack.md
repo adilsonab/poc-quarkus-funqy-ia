@@ -29,6 +29,18 @@ Quarkus 3.33.4, Funqy HTTP, PostgreSQL 17 e Liquibase.
    `/speckit-plan`, `/speckit-tasks` e `/speckit-analyze`. Separe mudanças por
    compatibilidade quando isso reduzir risco. Apresente versões-alvo e riscos
    para revisão antes de alterações destrutivas ou difíceis de reverter.
+5. Se o destino trocar a major do PostgreSQL, inclua no plano um backup
+   lógico e uma verificação dos dados antes de recriar o serviço Compose.
+   Explique que o backup precisa ser feito no terminal do host quando o Dev
+   Container não tem acesso ao Docker. Use um volume novo para a major nova,
+   preserve o volume antigo e não recomende `docker compose down -v`. Não
+   inicie a aplicação no banco novo antes de restaurar o backup.
+6. Se o Quarkus Agent MCP estiver disponível, use `quarkus_update` primeiro em
+   `dryRun=true`, revise o patch e as notas experimentais do atualizador, e
+   só aplique as receitas depois de aprovar as mudanças. Leia os guias oficiais
+   de migração do Quarkus; o atualizador não substitui essa revisão. Se a busca
+   de documentação via MCP estiver indisponível, registre a causa e consulte
+   as fontes oficiais sem habilitar o socket Docker do host.
 
 ## Requisitos para implementação
 
@@ -40,6 +52,9 @@ Quarkus 3.33.4, Funqy HTTP, PostgreSQL 17 e Liquibase.
   respostas de sucesso simuladas.
 - Preserve dados e histórico Liquibase. Nunca edite changesets já aplicados;
   crie novos changesets apenas se a migração exigir mudança de schema.
+- Ao migrar entre majors do PostgreSQL, preserve os dados com dump/restore
+  validado e volumes separados. Uma troca de tag da imagem não migra o formato
+  interno do diretório de dados.
 - Atualize regras, skills e README apenas quando as decisões de compatibilidade
   ou procedimentos realmente mudarem. Registre claramente que Funqy HTTP é
   preview ou documente eventual mudança oficial de status.
